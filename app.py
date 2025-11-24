@@ -1,63 +1,218 @@
+# app.py
+# Nursing Scores App — Full combined file
+# - Includes: dark hero header, sky-blue background, logo processing (convert uploaded JPG -> PNG with transparency),
+#   teal-styled sections & badges, scoring modules (AVPU, GCS, Braden, Morse, qSOFA, CRT, VIP, NEWS, RASS, CAM-ICU),
+#   save to CSV + download, quick alert actions.
+#
+# BEFORE DEPLOYING: ensure requirements.txt contains:
+#   streamlit>=1.22.0
+#   pandas>=2.0
+#   Pillow>=9.0
+
 import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
 import uuid
 
-# ---------- Config & CSS ----------
-st.set_page_config(page_title="Nursing Scores App (Màu & Lưu CSV)", layout="wide")
+# For image processing (make white -> transparent)
+from PIL import Image
 
+# ---------------- Config ----------------
+st.set_page_config(page_title="Công cụ đánh giá cho điều dưỡng", layout="wide")
+
+# ---------------- Paths ----------------
+# Path to the logo image you uploaded in the chat (use this exact path)
+UPLOADED_LOGO = "/mnt/data/AB03982D-A2B3-4221-BE1A-FBD4C29A7492.jpeg"
+# Output processed (transparent) logo filename
+PROCESSED_LOGO = "logo_trans.png"
+
+# CSV save path
+CSV_PATH = "evaluations.csv"
+
+# ---------------- Process logo (convert white bg -> transparent if needed) ----------------
+def ensure_transparent_logo(src_path: str, out_path: str, white_threshold=240):
+    """
+    Convert near-white background pixels to transparent and save as PNG.
+    Only runs if src exists and out_path doesn't exist yet (so it doesn't repeat every run).
+    """
+    try:
+        if os.path.exists(src_path) and not os.path.exists(out_path):
+            img = Image.open(src_path).convert("RGBA")
+            datas = img.getdata()
+            newData = []
+            for item in datas:
+                # item is (R,G,B,A)
+                if item[0] >= white_threshold and item[1] >= white_threshold and item[2] >= white_threshold:
+                    # make transparent
+                    newData.append((255, 255, 255, 0))
+                else:
+                    newData.append(item)
+            img.putdata(newData)
+            img.save(out_path, "PNG")
+            return True
+    except Exception as e:
+        # If conversion fails, just ignore and use original
+        print("Logo processing error:", e)
+    return False
+
+# Try to create processed logo if possible
+ensure_transparent_logo(UPLOADED_LOGO, PROCESSED_LOGO)
+
+# Choose which logo to show (prefer processed PNG)
+if os.path.exists(PROCESSED_LOGO):
+    LOGO_PATH_TO_USE = PROCESSED_LOGO
+elif os.path.exists(UPLOADED_LOGO):
+    LOGO_PATH_TO_USE = UPLOADED_LOGO
+else:
+    LOGO_PATH_TO_USE = None  # no logo available
+
+# ---------------- CSS (sky-blue background + hero + teal theme) ----------------
 PAGE_CSS = """
 <style>
+/* HERO (dark) */
+.hero {
+  background: #0f1724;
+  color: #ffffff;
+  padding: 36px 24px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.hero .title {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.02;
+  margin: 0 0 8px 0;
+}
+.hero .lead {
+  font-size: 16px;
+  color: #cbd5d9;
+  max-width: 980px;
+  margin: 0;
+  opacity: 0.95;
+}
+
+/* Page background: light sky blue */
 [data-testid="stAppViewContainer"] {
-  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+  background: #E6F4FF !important;
 }
-.main-header {
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  color: #0b5fff;
-  font-weight: 700;
-  font-size: 28px;
-  padding-bottom: 6px;
-}
-.subtitle {
-  color: #333333;
+
+/* Header row (logo + title) */
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   margin-bottom: 12px;
 }
-.section {
-  background: rgba(11,95,255,0.04);
-  border-left: 4px solid #0b5fff;
-  padding: 8px 12px;
+.logo-img {
+  width: 84px;
+  height: 84px;
   border-radius: 6px;
-  margin-bottom: 8px;
+  object-fit: contain;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  background: transparent;
 }
+.header-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0b7f6b;
+  margin: 0;
+}
+.header-sub {
+  margin: 2px 0 0 0;
+  color: #2b6f63;
+  font-size: 13px;
+}
+
+/* Section cards */
+.section {
+  background: rgba(255,255,255,0.85);
+  border-left: 5px solid #0b7f6b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* badges */
 .badge {
   display:inline-block;
-  padding:4px 10px;
-  border-radius:12px;
+  padding:6px 12px;
+  border-radius:14px;
   color:white;
-  font-weight:600;
+  font-weight:700;
   font-size:13px;
 }
-.badge-green { background:#16a34a; }   /* low */
+.badge-green { background:#059669; }   /* low */
 .badge-yellow { background:#f59e0b; }  /* medium */
 .badge-red { background:#dc2626; }     /* high */
+
+/* Button style */
+.stButton>button {
+  background: linear-gradient(180deg,#10b981,#059669);
+  border: none;
+  color: white;
+  padding: .45rem .9rem;
+  border-radius: 8px;
+}
+
+/* Small note */
 .small-note {
   background: #ffffff;
-  border: 1px solid #e6eefc;
-  padding: 8px;
-  border-radius: 6px;
-  color: #333;
+  border: 1px solid #dff5ef;
+  padding: 10px;
+  border-radius: 8px;
+  color: #234d48;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .hero .title { font-size: 30px; }
+  .logo-img { width:64px; height:64px;}
+  .header-title { font-size:18px; }
 }
 </style>
 """
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
-# ---------- Header ----------
-st.markdown('<div class="main-header">Bộ Công Cụ Tính thang Điểm   dành cho Điều Dưỡng</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>', unsafe_allow_html=True)
-st.markdown('---')
+# ---------------- Header (logo + title) ----------------
+header_html = ""
+if LOGO_PATH_TO_USE:
+    # Use the logo file from repo/workspace
+    header_html = f"""
+    <div class="header-row">
+      <img src="{LOGO_PATH_TO_USE}" class="logo-img" />
+      <div>
+        <div class="header-title">Công cụ đánh giá cho điều dưỡng</div>
+        <div class="header-sub">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>
+      </div>
+    </div>
+    """
+else:
+    header_html = """
+    <div class="header-row">
+      <div>
+        <div class="header-title">Công cụ đánh giá cho điều dưỡng</div>
+        <div class="header-sub">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>
+      </div>
+    </div>
+    """
 
-# ---------- helper ----------
+st.markdown(header_html, unsafe_allow_html=True)
+
+# ---------------- HERO (dark) ----------------
+HERO_HTML = """
+<div class="hero">
+  <div class="title">Công cụ đánh giá cho điều dưỡng</div>
+  <p class="lead">
+    Công cụ này chỉ <strong>tính toán và hiển thị kết quả</strong>, không lưu dữ liệu vĩnh viễn (trừ khi bạn bấm lưu CSV). 
+    Sử dụng nhanh tại giường được xây dựng bởi <strong>TS.ĐD Lê Quốc Dũng</strong>, Khoa Điều dưỡng - KTYH, Trường Cao đẳng Y tế Đồng Tháp.
+  </p>
+</div>
+"""
+st.markdown(HERO_HTML, unsafe_allow_html=True)
+
+# ---------------- helper ----------------
 def badge_html(level):
     if level == 'low':
         cls = 'badge-green'
@@ -69,17 +224,6 @@ def badge_html(level):
         cls = 'badge-red'
         text = 'Cao'
     return f'<span class="badge {cls}">{text}</span>'
-
-CSV_PATH = "evaluations.csv"  # file lưu kết quả
-
-# ---------- Optional: show uploaded image (use your uploaded image path) ----------
-# Replace path below if you want another image in repo; currently using uploaded local path
-IMAGE_PATH = "/mnt/data/017E751B-192A-4147-8BD0-A9622E938D27.jpeg"
-if os.path.exists(IMAGE_PATH):
-    try:
-        st.image(IMAGE_PATH, width=220)
-    except Exception:
-        pass
 
 # ---------------- AVPU & GCS ----------------
 st.markdown('<div class="section"><b>1. AVPU & GCS</b></div>', unsafe_allow_html=True)
@@ -100,7 +244,7 @@ with col2:
         gcs_level = 'medium'
     else:
         gcs_level = 'low'
-    st.markdown(f'**GCS = {gcs_total}** — {st.markdown(badge_html(gcs_level), unsafe_allow_html=True)}', unsafe_allow_html=True)
+    st.markdown(f'**GCS = {gcs_total}** &nbsp; {badge_html(gcs_level)}', unsafe_allow_html=True)
 
 st.markdown('---')
 
@@ -131,7 +275,7 @@ st.markdown(f'**CRT = {crt:.1f}s** &nbsp; {badge_html(crt_level)}', unsafe_allow
 
 st.markdown('---')
 
-# ---------------- Morse Fall ----------------
+# ---------------- Morse ----------------
 st.markdown('<div class="section"><b>4. Morse Fall Scale</b></div>', unsafe_allow_html=True)
 fall_prev = st.checkbox("Té ngã trong 3 tháng")
 dx2 = st.checkbox("≥2 chẩn đoán")
@@ -190,7 +334,7 @@ news += 3 if sbp <= 90 else 2 if sbp <= 100 else 1 if sbp <= 110 else 0
 news += 3 if hr <= 40 else 1 if hr <= 50 else 0 if hr <= 90 else 1 if hr <= 110 else 2 if hr <= 130 else 3
 news += 3 if avpu_score != 0 else 0
 news += 2 if o2 else 0
-news_level = 'high' if news >= 7 else 'medium' if news >=5 else 'low'
+news_level = 'high' if news >= 7 else 'medium' if news >= 5 else 'low'
 st.markdown(f'**NEWS = {news}** &nbsp; {badge_html(news_level)}', unsafe_allow_html=True)
 
 st.markdown('---')
