@@ -53,7 +53,7 @@ PAGE_CSS = """
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
 # ---------- Header ----------
-st.markdown('<div class="main-header">Bộ Công Cụ Tính Điểm Điều Dưỡng</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Bộ Công Cụ Tính thang Điểm   dành cho Điều Dưỡng</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>', unsafe_allow_html=True)
 st.markdown('---')
 
