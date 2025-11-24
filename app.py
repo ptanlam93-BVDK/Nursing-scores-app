@@ -1,15 +1,15 @@
 # app.py
-# Full Nursing Scores App (ready to paste into GitHub)
-# - set_page_config is placed at top (required)
-# - sky-blue background, header with logo, dark hero, teal sections
-# - logo processing (white -> transparent) if PIL available
+# Full Nursing Scores App — pastel-blue background (#E6F2FF) with high-contrast text
+# - set_page_config at top (required)
+# - header with logo (uses uploaded image path), dark hero banner, white section cards for readability
+# - logo auto-conversion to transparent if Pillow available
 # - scoring modules: AVPU, GCS, Braden, Morse, qSOFA, CRT, VIP, NEWS, RASS, CAM-ICU
-# - save results to CSV, download CSV, quick-alert actions
+# - save to CSV, download CSV, quick-alert actions
 #
-# REQUIREMENTS (in requirements.txt):
+# REQUIREMENTS (requirements.txt):
 # streamlit>=1.22.0
 # pandas>=2.0
-# Pillow>=9.0
+# Pillow>=9.0  (optional but recommended if you want automatic logo transparency conversion)
 
 import streamlit as st
 
@@ -20,13 +20,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# now normal imports
+# normal imports
 import pandas as pd
 import os
 from datetime import datetime
 import uuid
 
-# optional image processing
+# optional image processing (Pillow)
 try:
     from PIL import Image
     PIL_AVAILABLE = True
@@ -34,7 +34,8 @@ except Exception:
     PIL_AVAILABLE = False
 
 # ---------------- Paths & constants ----------------
-# If you uploaded logo to workspace during this session, path used below:
+# Use the uploaded logo path from your session (the system will convert local path to an accessible URL when deployed)
+# (This is the image you uploaded earlier)
 UPLOADED_LOGO = "/mnt/data/AB03982D-A2B3-4221-BE1A-FBD4C29A7492.jpeg"
 PROCESSED_LOGO = "logo_trans.png"   # will be created in repo/workspace if possible
 CSV_PATH = "evaluations.csv"
@@ -74,34 +75,19 @@ elif os.path.exists(UPLOADED_LOGO):
 else:
     LOGO_PATH_TO_USE = None
 
-# ---------------- CSS (sky-blue background + styles) ----------------
+# ---------------- CSS (pastel-blue background + white cards + high-contrast text) ----------------
 PAGE_CSS = """
 <style>
-/* HERO (dark) */
-.hero {
-  background: #0f1724;
-  color: #ffffff;
-  padding: 36px 24px;
-  border-radius: 8px;
-  margin-bottom: 18px;
-}
-.hero .title {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1.02;
-  margin: 0 0 8px 0;
-}
-.hero .lead {
-  font-size: 16px;
-  color: #cbd5d9;
-  max-width: 980px;
-  margin: 0;
-  opacity: 0.95;
+/* Page background: pastel blue for a calm medical look */
+[data-testid="stAppViewContainer"] {
+  background: #E6F2FF !important;  /* pastel blue */
+  color: #0F1724 !important;       /* dark teal/black for readability */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* Page background: light sky blue */
-[data-testid="stAppViewContainer"] {
-  background: #E6F4FF !important;
+/* Ensure Markdown containers use dark text */
+[data-testid="stMarkdownContainer"], .stText, .css-1l02zno {
+  color: #0F1724 !important;
 }
 
 /* Header row (logo + title) */
@@ -122,23 +108,43 @@ PAGE_CSS = """
 .header-title {
   font-size: 26px;
   font-weight: 800;
-  color: #0b7f6b;
+  color: #0B7F6B;
   margin: 0;
 }
 .header-sub {
   margin: 2px 0 0 0;
-  color: #2b6f63;
+  color: #145E55;
   font-size: 13px;
 }
 
-/* Section cards */
+/* HERO (dark) banner */
+.hero {
+  background: #0F1724;
+  color: #ffffff !important;
+  padding: 34px 22px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+.hero .title {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+}
+.hero .lead {
+  font-size: 15px;
+  color: #d0d7df;
+  margin: 0;
+}
+
+/* Section cards: white background so controls and text pop */
 .section {
-  background: rgba(255,255,255,0.85);
+  background: #FFFFFF !important;  /* white card for readability */
   border-left: 5px solid #0b7f6b;
-  padding: 10px 14px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 6px rgba(11,127,107,0.06);
+  color: #0F1724 !important;
 }
 
 /* badges */
@@ -154,28 +160,29 @@ PAGE_CSS = """
 .badge-yellow { background:#f59e0b; }  /* medium */
 .badge-red { background:#dc2626; }     /* high */
 
-/* Button style */
+/* Buttons: more visible */
 .stButton>button {
   background: linear-gradient(180deg,#10b981,#059669);
   border: none;
   color: white;
-  padding: .45rem .9rem;
+  padding: .5rem .95rem;
   border-radius: 8px;
+  font-weight: 700;
 }
 
 /* Small note */
 .small-note {
   background: #ffffff;
-  border: 1px solid #dff5ef;
+  border: 1px solid #d9ecea;
   padding: 10px;
   border-radius: 8px;
   color: #234d48;
 }
 
-/* Responsive */
+/* Responsive tweaks */
 @media (max-width: 600px) {
-  .hero .title { font-size: 30px; }
-  .logo-img { width:64px; height:64px;}
+  .hero .title { font-size: 28px; }
+  .logo-img { width:64px; height:64px; }
   .header-title { font-size:18px; }
 }
 </style>
@@ -208,16 +215,16 @@ st.markdown(header_html, unsafe_allow_html=True)
 # ---------------- HERO ----------------
 HERO_HTML = """
 <div class="hero">
-  <div class="title">Công cụ đánh giá cho dành điều dưỡng</div>
+  <div class="title">Công cụ đánh giá dành cho điều dưỡng</div>
   <p class="lead">
-    Công cụ này <strong>tính toán và hiển thị kết quả</strong>, không lưu dữ liệu (trừ khi bạn bấm lưu CSV). 
-Sử dụng nhanh tại giường được xây dựng, viết bởi <strong>CN.ĐD Phan Tấn Lãm</strong>, Khoa Hồi sức Tích cực - Chống độc (ICU), Bệnh viện Đa khoa Đồng Tháp.
+    Công cụ này <strong>tính toán và hiển thị kết quả</strong>. Khi cần lưu lâu dài, bấm <strong>Save to CSV</strong> hoặc tích hợp với Drive/DB.
+    Viết bởi <strong>CN.ĐD Phan Tấn Lãm</strong>, Khoa Hồi sức Tích cực - Chống độc, Bệnh viện Đa khoa Đồng Tháp.
   </p>
 </div>
 """
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
-# ---------------- helper ----------------
+# ---------------- helper functions ----------------
 def badge_html(level):
     if level == 'low':
         cls = 'badge-green'
@@ -282,7 +289,7 @@ st.markdown(f'**CRT = {crt:.1f}s** &nbsp; {badge_html(crt_level)}', unsafe_allow
 
 st.markdown('---')
 
-# Morse
+# Morse Fall Scale
 st.markdown('<div class="section"><b>4. Morse Fall Scale</b></div>', unsafe_allow_html=True)
 fall_prev = st.checkbox("Té ngã trong 3 tháng")
 dx2 = st.checkbox("≥2 chẩn đoán")
@@ -318,7 +325,7 @@ st.markdown(f'**qSOFA = {qsofa}** &nbsp; {badge_html(qsofa_level)}', unsafe_allo
 
 st.markdown('---')
 
-# VIP
+# VIP (phlebitis)
 st.markdown('<div class="section"><b>6. VIP (Viêm tĩnh mạch)</b></div>', unsafe_allow_html=True)
 vip = st.slider("VIP (0–5)", 0, 5, 0)
 vip_desc = ["Không","Đỏ nhẹ","Đỏ & đau","Viêm vừa","Viêm nặng","Áp xe"][vip]
