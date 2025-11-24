@@ -19,7 +19,7 @@ import uuid
 from PIL import Image
 
 # ---------------- Config ----------------
-st.set_page_config(page_title="Công cụ đánh giá cho điều dưỡng", layout="wide")
+st.set_page_config(page_title="Công cụ đánh giá dành cho điều dưỡng", layout="bule")
 
 # ---------------- Paths ----------------
 # Path to the logo image you uploaded in the chat (use this exact path)
@@ -203,10 +203,10 @@ st.markdown(header_html, unsafe_allow_html=True)
 # ---------------- HERO (dark) ----------------
 HERO_HTML = """
 <div class="hero">
-  <div class="title">Công cụ đánh giá cho điều dưỡng</div>
+  <div class="title">Công cụ đánh giá dành cho điều dưỡng </div>
   <p class="lead">
-    Công cụ này chỉ <strong>tính toán và hiển thị kết quả</strong>, không lưu dữ liệu vĩnh viễn (trừ khi bạn bấm lưu CSV). 
-    Sử dụng nhanh tại giường được xây dựng bởi <strong>TS.ĐD Lê Quốc Dũng</strong>, Khoa Điều dưỡng - KTYH, Trường Cao đẳng Y tế Đồng Tháp.
+    Công cụ này <strong>tính toán và hiển thị kết quả</strong>, không lưu dữ liệu (trừ khi bạn bấm lưu CSV). 
+    Sử dụng nhanh tại giường được xây dựng, viết bởi <strong>CN.ĐD Phan Tấn Lãm</strong>, Khoa Hồi sức Tích cực - Chống độc (ICU), Bệnh viện Đa khoa Đồng Tháp.
   </p>
 </div>
 """
