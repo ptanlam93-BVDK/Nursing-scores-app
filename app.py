@@ -1,73 +1,80 @@
 # app.py
-# Nursing Scores App — Full combined file
-# - Includes: dark hero header, sky-blue background, logo processing (convert uploaded JPG -> PNG with transparency),
-#   teal-styled sections & badges, scoring modules (AVPU, GCS, Braden, Morse, qSOFA, CRT, VIP, NEWS, RASS, CAM-ICU),
-#   save to CSV + download, quick alert actions.
+# Full Nursing Scores App (ready to paste into GitHub)
+# - set_page_config is placed at top (required)
+# - sky-blue background, header with logo, dark hero, teal sections
+# - logo processing (white -> transparent) if PIL available
+# - scoring modules: AVPU, GCS, Braden, Morse, qSOFA, CRT, VIP, NEWS, RASS, CAM-ICU
+# - save results to CSV, download CSV, quick-alert actions
 #
-# BEFORE DEPLOYING: ensure requirements.txt contains:
-#   streamlit>=1.22.0
-#   pandas>=2.0
-#   Pillow>=9.0
+# REQUIREMENTS (in requirements.txt):
+# streamlit>=1.22.0
+# pandas>=2.0
+# Pillow>=9.0
 
 import streamlit as st
+
+# --- set_page_config must be called before any other st.* UI calls ---
+st.set_page_config(
+    page_title="Công cụ đánh giá dành cho điều dưỡng",
+    page_icon="🩺",
+    layout="wide"
+)
+
+# now normal imports
 import pandas as pd
 import os
 from datetime import datetime
 import uuid
 
-# For image processing (make white -> transparent)
-from PIL import Image
+# optional image processing
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except Exception:
+    PIL_AVAILABLE = False
 
-# ---------------- Config ----------------
-st.set_page_config(page_title="Công cụ đánh giá dành cho điều dưỡng", layout="bule")
-
-# ---------------- Paths ----------------
-# Path to the logo image you uploaded in the chat (use this exact path)
+# ---------------- Paths & constants ----------------
+# If you uploaded logo to workspace during this session, path used below:
 UPLOADED_LOGO = "/mnt/data/AB03982D-A2B3-4221-BE1A-FBD4C29A7492.jpeg"
-# Output processed (transparent) logo filename
-PROCESSED_LOGO = "logo_trans.png"
-
-# CSV save path
+PROCESSED_LOGO = "logo_trans.png"   # will be created in repo/workspace if possible
 CSV_PATH = "evaluations.csv"
 
-# ---------------- Process logo (convert white bg -> transparent if needed) ----------------
+# ---------------- Helper: make transparent logo if possible ----------------
 def ensure_transparent_logo(src_path: str, out_path: str, white_threshold=240):
-    """
-    Convert near-white background pixels to transparent and save as PNG.
-    Only runs if src exists and out_path doesn't exist yet (so it doesn't repeat every run).
-    """
+    """Convert near-white pixels to transparent and save PNG (only if PIL available)."""
+    if not PIL_AVAILABLE:
+        return False
     try:
         if os.path.exists(src_path) and not os.path.exists(out_path):
             img = Image.open(src_path).convert("RGBA")
             datas = img.getdata()
             newData = []
             for item in datas:
-                # item is (R,G,B,A)
+                # item = (R,G,B,A)
                 if item[0] >= white_threshold and item[1] >= white_threshold and item[2] >= white_threshold:
-                    # make transparent
-                    newData.append((255, 255, 255, 0))
+                    newData.append((255,255,255,0))
                 else:
                     newData.append(item)
             img.putdata(newData)
             img.save(out_path, "PNG")
             return True
     except Exception as e:
-        # If conversion fails, just ignore and use original
+        # ignore failure, will fallback to original
         print("Logo processing error:", e)
     return False
 
-# Try to create processed logo if possible
+# try to produce a transparent logo if we have the uploaded JPG
 ensure_transparent_logo(UPLOADED_LOGO, PROCESSED_LOGO)
 
-# Choose which logo to show (prefer processed PNG)
+# decide which logo path to use
 if os.path.exists(PROCESSED_LOGO):
     LOGO_PATH_TO_USE = PROCESSED_LOGO
 elif os.path.exists(UPLOADED_LOGO):
     LOGO_PATH_TO_USE = UPLOADED_LOGO
 else:
-    LOGO_PATH_TO_USE = None  # no logo available
+    LOGO_PATH_TO_USE = None
 
-# ---------------- CSS (sky-blue background + hero + teal theme) ----------------
+# ---------------- CSS (sky-blue background + styles) ----------------
 PAGE_CSS = """
 <style>
 /* HERO (dark) */
@@ -79,7 +86,7 @@ PAGE_CSS = """
   margin-bottom: 18px;
 }
 .hero .title {
-  font-size: 44px;
+  font-size: 40px;
   font-weight: 800;
   line-height: 1.02;
   margin: 0 0 8px 0;
@@ -178,12 +185,11 @@ st.markdown(PAGE_CSS, unsafe_allow_html=True)
 # ---------------- Header (logo + title) ----------------
 header_html = ""
 if LOGO_PATH_TO_USE:
-    # Use the logo file from repo/workspace
     header_html = f"""
     <div class="header-row">
       <img src="{LOGO_PATH_TO_USE}" class="logo-img" />
       <div>
-        <div class="header-title">Công cụ đánh giá cho điều dưỡng</div>
+        <div class="header-title">Công cụ đánh giá dành cho điều dưỡng</div>
         <div class="header-sub">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>
       </div>
     </div>
@@ -192,21 +198,20 @@ else:
     header_html = """
     <div class="header-row">
       <div>
-        <div class="header-title">Công cụ đánh giá cho điều dưỡng</div>
+        <div class="header-title">Công cụ đánh giá dành cho điều dưỡng</div>
         <div class="header-sub">AVPU · GCS · Braden · Morse · qSOFA · CRT · VIP · NEWS · RASS · CAM-ICU</div>
       </div>
     </div>
     """
-
 st.markdown(header_html, unsafe_allow_html=True)
 
-# ---------------- HERO (dark) ----------------
+# ---------------- HERO ----------------
 HERO_HTML = """
 <div class="hero">
-  <div class="title">Công cụ đánh giá dành cho điều dưỡng </div>
+  <div class="title">Công cụ đánh giá cho dành điều dưỡng</div>
   <p class="lead">
     Công cụ này <strong>tính toán và hiển thị kết quả</strong>, không lưu dữ liệu (trừ khi bạn bấm lưu CSV). 
-    Sử dụng nhanh tại giường được xây dựng, viết bởi <strong>CN.ĐD Phan Tấn Lãm</strong>, Khoa Hồi sức Tích cực - Chống độc (ICU), Bệnh viện Đa khoa Đồng Tháp.
+Sử dụng nhanh tại giường được xây dựng, viết bởi <strong>CN.ĐD Phan Tấn Lãm</strong>, Khoa Hồi sức Tích cực - Chống độc (ICU), Bệnh viện Đa khoa Đồng Tháp.
   </p>
 </div>
 """
@@ -225,7 +230,9 @@ def badge_html(level):
         text = 'Cao'
     return f'<span class="badge {cls}">{text}</span>'
 
-# ---------------- AVPU & GCS ----------------
+# ---------------- Scoring UI ----------------
+
+# AVPU & GCS
 st.markdown('<div class="section"><b>1. AVPU & GCS</b></div>', unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 with col1:
@@ -248,7 +255,7 @@ with col2:
 
 st.markdown('---')
 
-# ---------------- Braden ----------------
+# Braden
 st.markdown('<div class="section"><b>2. Braden (Nguy cơ loét tỳ đè)</b></div>', unsafe_allow_html=True)
 s = st.slider("Sensory (1–4)", 1, 4, 4)
 moi = st.slider("Moisture (1–4)", 1, 4, 4)
@@ -267,7 +274,7 @@ st.markdown(f'**Braden = {braden_total}** &nbsp; {badge_html(braden_level)}', un
 
 st.markdown('---')
 
-# ---------------- CRT ----------------
+# CRT
 st.markdown('<div class="section"><b>3. Capillary Refill Time (CRT)</b></div>', unsafe_allow_html=True)
 crt = st.number_input("CRT (giây)", 0.0, 10.0, 2.0, step=0.1)
 crt_level = 'low' if crt <= 3.0 else 'high'
@@ -275,7 +282,7 @@ st.markdown(f'**CRT = {crt:.1f}s** &nbsp; {badge_html(crt_level)}', unsafe_allow
 
 st.markdown('---')
 
-# ---------------- Morse ----------------
+# Morse
 st.markdown('<div class="section"><b>4. Morse Fall Scale</b></div>', unsafe_allow_html=True)
 fall_prev = st.checkbox("Té ngã trong 3 tháng")
 dx2 = st.checkbox("≥2 chẩn đoán")
@@ -300,7 +307,7 @@ st.markdown(f'**Morse = {morse}** &nbsp; {badge_html(morse_level)}', unsafe_allo
 
 st.markdown('---')
 
-# ---------------- qSOFA ----------------
+# qSOFA
 st.markdown('<div class="section"><b>5. qSOFA</b></div>', unsafe_allow_html=True)
 rr = st.number_input("Nhịp thở (l/p)", 5, 60, 18)
 sbp = st.number_input("Huyết áp tâm thu (mmHg)", 50, 220, 120)
@@ -311,7 +318,7 @@ st.markdown(f'**qSOFA = {qsofa}** &nbsp; {badge_html(qsofa_level)}', unsafe_allo
 
 st.markdown('---')
 
-# ---------------- VIP ----------------
+# VIP
 st.markdown('<div class="section"><b>6. VIP (Viêm tĩnh mạch)</b></div>', unsafe_allow_html=True)
 vip = st.slider("VIP (0–5)", 0, 5, 0)
 vip_desc = ["Không","Đỏ nhẹ","Đỏ & đau","Viêm vừa","Viêm nặng","Áp xe"][vip]
@@ -320,7 +327,7 @@ st.markdown(f'**VIP = {vip}** — {vip_desc} &nbsp; {badge_html(vip_level)}', un
 
 st.markdown('---')
 
-# ---------------- NEWS ----------------
+# NEWS
 st.markdown('<div class="section"><b>7. NEWS</b></div>', unsafe_allow_html=True)
 o2 = st.checkbox("Đang thở oxy?")
 temp = st.number_input("Nhiệt độ (°C)", 30.0, 43.0, 37.0)
@@ -339,7 +346,7 @@ st.markdown(f'**NEWS = {news}** &nbsp; {badge_html(news_level)}', unsafe_allow_h
 
 st.markdown('---')
 
-# ---------------- RASS ----------------
+# RASS
 st.markdown('<div class="section"><b>8. RASS</b></div>', unsafe_allow_html=True)
 rass = st.selectbox("Chọn RASS", [
     "-5 Unarousable","-4 Deep sedation","-3 Moderate sedation","-2 Light sedation","-1 Drowsy",
@@ -361,7 +368,7 @@ st.markdown(f'**RASS = {rass_val}** &nbsp; {badge_html(rass_level)}', unsafe_all
 
 st.markdown('---')
 
-# ---------------- CAM-ICU ----------------
+# CAM-ICU
 st.markdown('<div class="section"><b>9. CAM-ICU (sàng lọc delirium)</b></div>', unsafe_allow_html=True)
 a = st.checkbox("A: Thay đổi cấp tính/dao động?")
 b = st.checkbox("B: Giảm chú ý?")
@@ -372,7 +379,7 @@ st.markdown(f'**CAM-ICU = {"Dương" if cam_pos else "Âm"}**', unsafe_allow_htm
 
 st.markdown('---')
 
-# ---------------- Collect results ----------------
+# Collect results
 result = {
     "id": str(uuid.uuid4()),
     "timestamp": datetime.now().isoformat(timespec='seconds'),
@@ -388,7 +395,7 @@ result = {
     "cam_pos": cam_pos
 }
 
-# ---------------- Save & Actions ----------------
+# Save & Actions
 st.markdown("### Lưu / Hành động")
 col_save, col_actions = st.columns([1,2])
 with col_save:
